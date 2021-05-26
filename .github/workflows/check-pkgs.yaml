@@ -1,0 +1,31 @@
+name: Packages Integrity
+on:
+  release:
+    types: [published]
+jobs:
+  check-ubuntu:
+    name: Check dpkg Ubuntu
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Ref info
+        id: ref
+        run: |
+          echo "::set-output name=TAG::${GITHUB_REF##*/}"
+          echo "::set-output name=VERSION::${GITHUB_REF##*/v}"
+      - name: Deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y godot3
+      - name: Download package
+        run: wget -O smce_gd.deb "smce_gd-${{ steps.ref.outputs.VERSION }}-Linux-x86_64-GNU-GodotDebug.deb"
+      - name: Validate version
+        run: |
+          [[ "$(dpkg-deb -W smce_gd.deb)" == "smce_gd	${{ steps.ref.outputs.VERSION }}" ]]
+      - name: Validate installation
+        run: sudo dpkg -i smce_gd.deb
+      - name: Validate PATH
+        run: file $(which smce_gd)
+      - name: Validate shared libs deps
+        run: |
+          ! ldd $(which smce_gd) | grep '=> not found'
